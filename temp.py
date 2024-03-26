@@ -5,12 +5,18 @@ import streamlit as st
 import datetime
 
 # Functions
+
 def update_totals(edited_df):
-    edited_df["Unit Price"].sum()
-    
-def save_df():  
-    return edited_df #TODO make this stateful to currently selected "in queue"
-    
+    st.write(edited_df["Unit Price"].sum())
+
+###                  ###
+### MAIN APPLICATION ###
+###                  ###
+
+"""
+# Camofire Automated Queue Selection
+"""
+
 # Dataframe
 #should be: is included, price, sale price, days since queued, purchase limit, suggested quantity
 # Camofire asked to include description and instead of item ID have item name; Also include different colors/sizes
@@ -170,69 +176,49 @@ df = pd.DataFrame( # test DF
     ]
 )
 
-# Utilities
-st.set_page_config(page_title="Camofire Automated Queue Selection", page_icon="🔥", layout="wide")
-selectbox = st.sidebar.selectbox('Select a model', ['Pricing', 'Queuing', 'Forecasting'])
+st.write("\n\n")
 
-###                  ###
-### MAIN APPLICATION ###
-###                  ###
+# Date selection
+d = st.date_input("Selecting items for:", datetime.date(2024, 3, 13))
 
-"""
-# Camofire Automated Queue Selection
-"""
+# TODO Figure out what this means
+purchase_limit = st.number_input("Purchase limit:", value=3, min_value=0)
 
-###################
-# Database Editor
-###################
-header = st.container()
-header_left, header_right = header.columns([1,1])
-header_left.date_input("Selecting items for:", datetime.date(2024, 3, 13)) # Date selection
-header_right.number_input("Purchase limit:", value=3, min_value=0) # Purchase limit
+#Button to select first 80 items for queue
+# TODO Make this button dynamic to select first 80 items
+st.button('Select first 80')
 
-edited_df = st.data_editor(df, use_container_width=True)
+#estimated revenue:
+#total estimated revenue %
+#total estimated revenue
+#total cost in
 
+# Interactive selection using Dataframe
 # TODO Alert if too many checked
+edited_df = st.data_editor(df)
 
-###################
-# Buttons
-###################
-buttons_left, buttons_middle_left, buttons_middle_right, buttons_right = st.columns([1,1,1,1])
-
-# Button to select first 80 items
-buttons_left.button('Select first 80') # TODO Make this button dynamic to select first 80 items
-
-# Button to update totals
-buttons_middle_left.button('Update Totals')#, on_click=update_totals)
-
-# Button for next day generation
-# TODO Make this button dynamic to update data to day after selected date
-# TODO Update this again later to have model retrained based off selected queue for current day
-buttons_middle_right.button('Generate next day')
+# Print out information from edited_df
+# TODO Make this text dynamic to selected queue items
+# TODO Add more outputs based on Camofire requests
+# TODO Print out total price of selected items
+#total = df["Unit Price"].sum()
+#st.text(total)
+st.text("Total selected value: $25,486.37")
+st.text("Total estimated sales value: $17,794.22")
+st.text("Total estimated revenue: $1,564.23")
+st.text("Average selected revenue %: 8.6%")
+st.text("Average estimated revenue %: 8.8%")
 
 # Button to download selections to csv
-buttons_right.download_button(
-    label="Download to CSV",
-    data=save_df().to_csv().encode('utf-8'),
+st.download_button(
+    label="Download selection data as CSV",
+    data=edited_df.to_csv().encode('utf-8'),
     file_name='edited_df.csv',
     mime='text/csv',
 )
 
-###################
-# Metrics
-###################
-# TODO Make this text dynamic to selected queue items
-total = 1000000
-sales_value = 23947.34
-revenue = 20922.01
-revenue_percent = 18.8
-estimated_percent = 23.6
+# Button for next day generation
+# TODO Make this button dynamic to update data to day after selected date
+# TODO Update this again later to have model retrained based off selected queue for current day
+st.button('Generate next day')
 
-# Metrics
-st.metric("Total selected value", f"${total}")
-metric_left, metric_right = st.columns([1,1])
-metric_left.metric("Total estimated sales value", f"${sales_value}")
-metric_left.metric("Average selected revenue %", f"{revenue_percent}%")
-metric_right.metric("Total estimated revenue", f"${revenue}")
-metric_right.metric("Average estimated revenue %", f"{estimated_percent}%")
-# TODO Add more outputs based on Camofire requests
