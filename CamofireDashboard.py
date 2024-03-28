@@ -1,20 +1,17 @@
-import altair as alt
-import numpy as np
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import datetime
 
-# Dataframe and aesthetic changes
+# Setting up df
 input = pd.read_csv("items_to_q.csv")
 df = pd.DataFrame(input)
 df.drop(columns=["Unnamed: 0"], inplace=True)
 df.insert(0, "In Queue", False)
-
 start_df = df.copy()
+# TODO Fix database values to output into 2 decimal places or list $/% amounts
    
 # Utilities
 st.set_page_config(page_title="Camofire Automated Queue Selection", page_icon="ðŸ”¥", layout="wide")
-#selectbox = st.sidebar.selectbox('Select a model', ['Pricing', 'Queuing', 'Forecasting'])
 
 ###                  ###
 ### MAIN APPLICATION ###
@@ -25,76 +22,133 @@ st.set_page_config(page_title="Camofire Automated Queue Selection", page_icon="ð
 """
 
 # Session Variables
-if 'sales_value' not in st.session_state:
-    st.session_state.sales_value = 0
+state = st.session_state
+
+if 'key' not in state:
+    state.key = 0
     
-if "total" not in st.session_state:
-    st.session_state.total = start_df["price"].sum()
+if 'date' not in state:
+    state.date = datetime.date(2024, 3, 13)
+    
+if 'purchase_limit' not in state:
+    state.purchase_limit = 3
 
-if "stateful_df" not in st.session_state:
-    st.session_state_stateful_df = start_df
+if "stateful_df" not in state:
+    state_stateful_df = start_df
 
-if "checked_sum" not in st.session_state:
-    st.session_state.checked_sum = 0
+if "checked_sum" not in state:
+    state.checked_sum = 0
+    
+if "total_value" not in state:
+    state.total_value = 0
+    
+if 'sales_value' not in state:
+    state.sales_value = 0 #Replace with algorithm output
+
+if 'revenue_value' not in state:
+    state.revenue_value = 0 #Replace with algorithm output
+    
+if 'revenue_percent_value' not in state:
+    state.revenue_percent_value = 0 #Replace with algorithm output
+
+if 'revenue_estimate_value' not in state:
+    state.revenue_estimate_value = 0 #Replace with algorithm output
+    
+# Functions
+def start_cb():
+    if state.start > state.end:
+        state.start = state.end
+
+def end_cb():
+    if state.end < state.start:
+        state.end = state.start
+        
+def reset():
+    state.key += 1
+    
+def change_day(date):
+    state.date += datetime.timedelta(days=1)
+    date = state.date
 
 ###################
 # Database Editor
 ###################
-# TODO Alert if too many checked    
-edited_df = st.data_editor(start_df, use_container_width=True, num_rows="dynamic")
+header_left, header_right = st.columns([1,1])
+date = header_left.date_input("Date for Queue:", value="today", format="MM/DD/YYYY") # Date selection
+header_right.number_input("Purchase Limit:", value=state.purchase_limit, min_value=0) # Purchase limit
+   
+edited_df = st.data_editor(state_stateful_df, use_container_width=True, key=f'editor_{state.key}')
 
-if st.session_state_stateful_df is not edited_df: # Edge case of changing back to original df not updating totals
-    st.session_state.total = edited_df["price"].sum()
-    st.session_state.checked_sum = edited_df["In Queue"].sum()
+# Update session variables from changes to df
+if state_stateful_df is not edited_df: # TODO Fix edge case of changing back to original df not updating totals
+    # Total selected value calcuation
+    state.total_value = 0
+    for i in range(0, len(edited_df)):
+        if edited_df["In Queue"][i] == True:
+            state.total_value += edited_df["price"][i]  
+            
+    #state.sales_value # Update this with algorithm output
+    #state.revenue_value # Update this with algorithm output
+    #state.revenue_estimate_value # Update this with algorithm output
+    #state.revenue_percent_value # Update this with algorithm output
     
-    if st.session_state.checked_sum > 80:
+    # In Queue sum
+    state.checked_sum = edited_df["In Queue"].sum()
+    
+    # Alert if too many are checked
+    if state.checked_sum > 80:
         st.error("You have selected more than 80 items to queue, please unselect some items to continue.")
     
-# Debugging Output  
-st.write("Total estimated sales value")
-st.write(st.session_state.total)
-st.write("Total checked items")
-st.write(st.session_state.checked_sum)
+# Tracks number of items selected to queue
+if edited_df["In Queue"].sum() > 0:
+    st.write("Items selected to queue")
+    st.write(state.checked_sum)
 
 ###################
 # Buttons
 ###################
-buttons_left, buttons_middle, buttons_right = st.columns([1,1,1])
+buttons_left, buttons_middle_left, buttons_middle_right, buttons_right = st.columns([1,1,1,1])
+
+# Button to reset data to original
+reset = buttons_left.button("Reset Data", on_click=reset) 
 
 # Button to select first 80 items
-first_eighty = buttons_left.button('Select first 80') # TODO Make this button dynamic to select first 80 items
+first_eighty = buttons_middle_left.button("Select first 80") # TODO Make this button dynamic to select first 80 items
 
+# Button to calculate new metrics
+#calculate = buttons_middle.button("Calculate Metrics") # Backup button in case we don't want dynamic output of current csv (currently loads quickly)
+      
 # Button for next day generation
 # TODO Make this button dynamic to update data to day after selected date
 # TODO Update this again later to have model retrained based off selected queue for current day
-buttons_middle.button('Generate next day')
+buttons_middle_right.button("Generate next day", on_click=change_day(date))
 
 # Button to download selections to csv
+# TODO Make this button only download queue selected items
 buttons_right.download_button(
     label="Download Selected to CSV",
-    data=edited_df.to_csv().encode('utf-8'),
-    file_name='edited_df.csv',
-    mime='text/csv',
+    data=edited_df.to_csv().encode("utf-8"),
+    file_name="edited_df.csv",
+    mime="text/csv",
 )
 
 ###################
 # Metrics
 ###################
-# TODO Make this text dynamic to selected queue items
-total = 1000000
-st.session_state.sales_value = start_df["price"].sum()
-revenue = 20922.01
-revenue_percent = 18.8
-estimated_percent = 23.6
+st.write("Total selected value")
+st.write(round(state.total_value, 2))
 
-# Metrics
-# TODO Change all these widgets to writes since widgets can't be stateful once instantiated
-st.metric("Total selected value", f"${total}")
-metric_left, metric_right = st.columns([1,1])
-metric_left.metric("Total estimated sales value", f"${st.session_state.sales_value}")
-metric_left.metric("Average selected revenue %", f"{revenue_percent}%")
-metric_right.metric("Total estimated revenue", f"${revenue}")
-metric_right.metric("Average estimated revenue %", f"{estimated_percent}%")
+st.write("Total estimated sales value")
+st.write(state.sales_value)
+
+st.write("Total estimated revenue")
+st.write(state.revenue_value)
+
+st.write("Average estimated revenue %")
+st.write(state.revenue_estimate_value)
+
+st.write("Average selected revenue %")
+st.write(state.revenue_percent_value)
+
 # TODO Add more outputs based on Camofire requests
-
-
+# TODO General formatting changes to application for aesthetic

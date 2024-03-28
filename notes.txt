@@ -2,9 +2,5 @@
 ###     DATAFRAME    ###
 ###                  ###
 
-should be: id, price, sale price, days since queued, purchase limit, suggested quantity
+There should be: id, price, sale price, days since queued, purchase limit, suggested quantity
 Camofire asked to include description and instead of item ID have item name; Also include different colors/sizes
-
-###                  ###
-###     DATAFRAME    ###
-###                  ###
