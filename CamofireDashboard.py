@@ -69,6 +69,15 @@ def reset():
 def change_day(date):
     state.date += datetime.timedelta(days=1)
     date = state.date
+    
+def create_queue_df():
+    queue_df = edited_df.copy()
+    for i in range(0, len(edited_df)):
+        if edited_df["In Queue"][i] == False:
+            queue_df.drop(i, inplace=True)
+    queue_df.reset_index(drop=True, inplace=True)
+    queue_df.drop(columns=["In Queue"], inplace=True)
+    return queue_df
 
 ###################
 # Database Editor
@@ -124,10 +133,9 @@ first_eighty = buttons_middle_left.button("Select first 80") # TODO Make this bu
 buttons_middle_right.button("Generate next day", on_click=change_day(date))
 
 # Button to download selections to csv
-# TODO Make this button only download queue selected items
 buttons_right.download_button(
     label="Download Selected to CSV",
-    data=edited_df.to_csv().encode("utf-8"),
+    data=create_queue_df().to_csv().encode("utf-8"),
     file_name="edited_df.csv",
     mime="text/csv",
 )
