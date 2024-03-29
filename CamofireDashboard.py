@@ -7,11 +7,29 @@ input = pd.read_csv("items_to_q.csv")
 df = pd.DataFrame(input)
 df.drop(columns=["Unnamed: 0"], inplace=True)
 df.insert(0, "In Queue", False)
+
 start_df = df.copy()
-# TODO Fix database values to output into 2 decimal places or list $/% amounts
    
 # Utilities
 st.set_page_config(page_title="Camofire Automated Queue Selection", page_icon="🔥", layout="wide")
+config = {
+    "item_id": st.column_config.NumberColumn(
+        "Item ID",
+        format="%.0f",
+        step=1,
+        disabled=True,),
+    "cost": st.column_config.NumberColumn(
+        "Cost (in USD)",
+        format="$%.2f",
+        step=0.01,
+        required=True,),
+    "price": st.column_config.NumberColumn(
+        "Price (in USD)",
+        format="$%.2f",
+        step=0.01,
+        required=True,),
+}
+# TODO General formatting changes to application for aesthetic
 
 ###                  ###
 ### MAIN APPLICATION ###
@@ -54,15 +72,7 @@ if 'revenue_percent_value' not in state:
 if 'revenue_estimate_value' not in state:
     state.revenue_estimate_value = 0 #Replace with algorithm output
     
-# Functions
-def start_cb():
-    if state.start > state.end:
-        state.start = state.end
-
-def end_cb():
-    if state.end < state.start:
-        state.end = state.start
-        
+# Functions      
 def reset():
     state.key += 1
     
@@ -79,6 +89,10 @@ def create_queue_df():
     queue_df.drop(columns=["In Queue"], inplace=True)
     return queue_df
 
+def select_first_eighty():   
+    # TODO Make this update df first 80 items to True
+    pass
+
 ###################
 # Database Editor
 ###################
@@ -86,7 +100,7 @@ header_left, header_right = st.columns([1,1])
 date = header_left.date_input("Date for Queue:", value="today", format="MM/DD/YYYY") # Date selection
 header_right.number_input("Purchase Limit:", value=state.purchase_limit, min_value=0) # Purchase limit
    
-edited_df = st.data_editor(state_stateful_df, use_container_width=True, key=f'editor_{state.key}')
+edited_df = st.data_editor(state_stateful_df, column_config= config, use_container_width=True, key=f'editor_{state.key}')
 
 # Update session variables from changes to df
 if state_stateful_df is not edited_df: # TODO Fix edge case of changing back to original df not updating totals
@@ -94,8 +108,9 @@ if state_stateful_df is not edited_df: # TODO Fix edge case of changing back to 
     state.total_value = 0
     for i in range(0, len(edited_df)):
         if edited_df["In Queue"][i] == True:
-            state.total_value += edited_df["price"][i]  
-            
+            state.total_value += df["price"][i]
+              
+    # TODO Update with necessary outputs        
     #state.sales_value # Update this with algorithm output
     #state.revenue_value # Update this with algorithm output
     #state.revenue_estimate_value # Update this with algorithm output
@@ -122,15 +137,7 @@ buttons_left, buttons_middle_left, buttons_middle_right, buttons_right = st.colu
 reset = buttons_left.button("Reset Data", on_click=reset) 
 
 # Button to select first 80 items
-first_eighty = buttons_middle_left.button("Select first 80") # TODO Make this button dynamic to select first 80 items
-
-# Button to calculate new metrics
-#calculate = buttons_middle.button("Calculate Metrics") # Backup button in case we don't want dynamic output of current csv (currently loads quickly)
-      
-# Button for next day generation
-# TODO Make this button dynamic to update data to day after selected date
-# TODO Update this again later to have model retrained based off selected queue for current day
-buttons_middle_right.button("Generate next day", on_click=change_day(date))
+first_eighty = buttons_middle_left.button("Select first 80", on_click=select_first_eighty)
 
 # Button to download selections to csv
 buttons_right.download_button(
@@ -143,20 +150,21 @@ buttons_right.download_button(
 ###################
 # Metrics
 ###################
-st.write("Total selected value")
-st.write(round(state.total_value, 2))
+st.metric(label="Total selected value", value=f"${'{:.2f}'.format(round(state.total_value, 2))}")
 
-st.write("Total estimated sales value")
-st.write(state.sales_value)
+metrics_left, metrics_right = st.columns([1,1])
+metrics_left.metric(label="Total estimated sales value", value=f"${'{:.2f}'.format(round(state.sales_value, 2))}")
 
-st.write("Total estimated revenue")
-st.write(state.revenue_value)
+metrics_right.metric(label="Total estimated revenue", value=f"${'{:.2f}'.format(round(state.revenue_value, 2))}")
 
-st.write("Average estimated revenue %")
-st.write(state.revenue_estimate_value)
+metrics_right.metric(label="Average estimated revenue %", value=f"{'{:.2f}'.format(round(state.revenue_estimate_value, 2))}%")
 
-st.write("Average selected revenue %")
-st.write(state.revenue_percent_value)
+metrics_left.metric(label="Average selected revenue %", value=f"{'{:.2f}'.format(round(state.revenue_percent_value, 2))}%")
 
+# Nice to have's / next steps
 # TODO Add more outputs based on Camofire requests
-# TODO General formatting changes to application for aesthetic
+# TODO Button for next day generation (Moved to backlog)
+
+# Unused features still in code
+# Button to calculate new metrics
+#calculate = buttons_middle.button("Calculate Metrics") # Backup button in case we don't want dynamic output of current csv (currently loads quickly)    
