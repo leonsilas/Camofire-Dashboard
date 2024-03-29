@@ -28,6 +28,15 @@ config = {
         format="$%.2f",
         step=0.01,
         required=True,),
+    "total_inv": st.column_config.NumberColumn(
+        "Qty In Stock",
+        format="%.0f",
+        step=1,
+        required=True,),
+    "days_since_queued": st.column_config.NumberColumn(
+        "Days Since Last Queued",
+        format="%.0f",
+        step=1,),
 }
 # TODO General formatting changes to application for aesthetic
 
