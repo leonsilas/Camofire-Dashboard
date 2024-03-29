@@ -55,7 +55,7 @@ if 'key' not in state:
     state.key = 0
     
 if 'date' not in state:
-    state.date = datetime.date(2024, 3, 13)
+    state.date = datetime.date.today()
     
 if 'purchase_limit' not in state:
     state.purchase_limit = 3
@@ -85,9 +85,10 @@ if 'revenue_estimate_value' not in state:
 def reset():
     state.key += 1
     
-def change_day(date):
+def change_day():
     state.date += datetime.timedelta(days=1)
-    date = state.date
+    # TODO Have df update with date selection
+    state.key += 1
     
 def create_queue_df():
     queue_df = edited_df.copy()
@@ -105,21 +106,23 @@ def select_first_eighty():
 ###################
 # Database Editor
 ###################
-header_left, header_right = st.columns([1,1])
-date = header_left.date_input("Date for Queue:", value="today", format="MM/DD/YYYY") # Date selection
+header_left, header_right, header_button = st.columns([1,1,0.25])
+date = header_left.date_input("Date for Queue:", value=state.date, format="MM/DD/YYYY") # Date selection
 header_right.number_input("Purchase Limit:", value=state.purchase_limit, min_value=0) # Purchase limit
+header_button.button("Next Day", on_click=change_day) # Refreshes page with model output for next date
    
 edited_df = st.data_editor(state_stateful_df, column_config= config, use_container_width=True, key=f'editor_{state.key}')
 
-# Update session variables from changes to df
-if state_stateful_df is not edited_df: # TODO Fix edge case of changing back to original df not updating totals
+# Update session variables from changes to df      
+if state_stateful_df is not edited_df:
     # Total selected value calcuation
     state.total_value = 0
     for i in range(0, len(edited_df)):
         if edited_df["In Queue"][i] == True:
             state.total_value += df["price"][i]
               
-    # TODO Update with necessary outputs        
+    # TODO Update with necessary outputs 
+        #  Might end up making calls to database or replced with calculate button depending on performance        
     #state.sales_value # Update this with algorithm output
     #state.revenue_value # Update this with algorithm output
     #state.revenue_estimate_value # Update this with algorithm output
@@ -134,8 +137,7 @@ if state_stateful_df is not edited_df: # TODO Fix edge case of changing back to 
     
 # Tracks number of items selected to queue
 if edited_df["In Queue"].sum() > 0:
-    st.write("Items selected to queue")
-    st.write(state.checked_sum)
+    st.write("Items selected to queue: {}".format(state.checked_sum))
 
 ###################
 # Buttons
@@ -172,7 +174,10 @@ metrics_left.metric(label="Average selected revenue %", value=f"{'{:.2f}'.format
 
 # Nice to have's / next steps
 # TODO Add more outputs based on Camofire requests
-# TODO Button for next day generation (Moved to backlog)
+# TODO Button for next day generation
+# TODO Merge metric calculations into a function
+# TODO DF: There should be: id, price, sale price, days since queued, purchase limit, suggested quantity
+    #  Camofire asked to include description and instead of item ID have item name; Also include different colors/sizes
 
 # Unused features still in code
 # Button to calculate new metrics
