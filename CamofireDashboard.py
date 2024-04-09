@@ -2,10 +2,14 @@ import streamlit as st
 import pandas as pd
 import datetime
 
+# TODO INT: There should be: id, sold_price, sale sold_price, days since queued, purchase limit, suggested quantity
+    #  Camofire asked to include description and instead of item ID have item name; Also include different colors/sizes
+
 # Setting up df
-input = pd.read_csv("items_to_q.csv")
+input = pd.read_csv("items_to_queue.csv")
 df = pd.DataFrame(input)
-df.drop(columns=["Unnamed: 0"], inplace=True)
+#df.drop(columns=["Unnamed: 0"], inplace=True) # Uncomment if there is an extra column
+df.drop(columns=["queue_date"], inplace=True)
 df.insert(0, "In Queue", False)
 
 start_df = df.copy()
@@ -23,20 +27,29 @@ config = {
         format="$%.2f",
         step=0.01,
         required=True,),
-    "price": st.column_config.NumberColumn(
-        "Price (in USD)",
+    "sold_price": st.column_config.NumberColumn(
+        "Selling Price (in USD)",
         format="$%.2f",
         step=0.01,
         required=True,),
-    "total_inv": st.column_config.NumberColumn(
+    "quantity_in_inventory": st.column_config.NumberColumn(
         "Qty In Stock",
         format="%.0f",
         step=1,
         required=True,),
-    "days_since_queued": st.column_config.NumberColumn(
-        "Days Since Last Queued",
+    # "days_since_queued": st.column_config.NumberColumn(
+    #     "Days Since Last Queued",
+    #     format="%.0f",
+    #     step=1,),
+    "quantity_to_queue": st.column_config.NumberColumn(
+        "Qty To Queue",
         format="%.0f",
         step=1,),
+    "retail_price": st.column_config.NumberColumn(
+        "Retail Price",
+        format="$%.2f",
+        step=0.01,
+        required=True,),
 }
 # TODO General formatting changes to application for aesthetic
 
@@ -58,10 +71,10 @@ if 'date' not in state:
     state.date = datetime.date.today()
     
 if 'purchase_limit' not in state:
-    state.purchase_limit = 3
+    state.purchase_limit = 2
 
 if "stateful_df" not in state:
-    state_stateful_df = start_df
+    state.stateful_df = start_df
 
 if "checked_sum" not in state:
     state.checked_sum = 0
@@ -83,11 +96,12 @@ if 'revenue_estimate_value' not in state:
     
 # Functions      
 def reset():
+    state.stateful_df = start_df
     state.key += 1
     
 def change_day():
     state.date += datetime.timedelta(days=1)
-    # TODO Have df update with date selection
+    # TODO INT: Have df update with date selection
     state.key += 1
     
 def create_queue_df():
@@ -99,9 +113,29 @@ def create_queue_df():
     queue_df.drop(columns=["In Queue"], inplace=True)
     return queue_df
 
+def calculate_metrics():
+    # In Queue sum
+    state.checked_sum = edited_df["In Queue"].sum()
+    
+    # TODO Update with necessary outputs
+    # Total selected value calcuation
+    state.total_value = 0
+    state.sales_value = 0
+    state.revenue_value = 0
+    state.revenue_estimate_value = 0
+    state.revenue_percent_value = 0
+    for i in range(0, len(edited_df)):
+        if edited_df["In Queue"][i] == True:
+            state.total_value += df["cost"][i]    
+            state.sales_value += df["sold_price"][i]
+            state.revenue_value += (df["sold_price"][i] - df["cost"][i])
+            state.revenue_estimate_value += ((df["sold_price"][i] - df["cost"][i]) / df["cost"][i]) * 100
+            state.revenue_estimate_value = state.revenue_estimate_value / state.checked_sum
+
 def select_first_eighty():   
-    # TODO Make this update df first 80 items to True
-    pass
+    edited_df["In Queue"] = False
+    edited_df.loc[0:79, "In Queue"] = True
+    state.stateful_df = edited_df
 
 ###################
 # Database Editor
@@ -111,29 +145,15 @@ date = header_left.date_input("Date for Queue:", value=state.date, format="MM/DD
 header_right.number_input("Purchase Limit:", value=state.purchase_limit, min_value=0) # Purchase limit
 header_button.button("Next Day", on_click=change_day) # Refreshes page with model output for next date
    
-edited_df = st.data_editor(state_stateful_df, column_config= config, use_container_width=True, key=f'editor_{state.key}')
+edited_df = st.data_editor(state.stateful_df, column_config= config, use_container_width=True, key=f'editor_{state.key}')
 
 # Update session variables from changes to df      
-if state_stateful_df is not edited_df:
-    # Total selected value calcuation
-    state.total_value = 0
-    for i in range(0, len(edited_df)):
-        if edited_df["In Queue"][i] == True:
-            state.total_value += df["price"][i]
-              
-    # TODO Update with necessary outputs 
-        #  Might end up making calls to database or replced with calculate button depending on performance        
-    #state.sales_value # Update this with algorithm output
-    #state.revenue_value # Update this with algorithm output
-    #state.revenue_estimate_value # Update this with algorithm output
-    #state.revenue_percent_value # Update this with algorithm output
-    
-    # In Queue sum
-    state.checked_sum = edited_df["In Queue"].sum()
+if state.stateful_df is not None:    
+    calculate_metrics()
     
     # Alert if too many are checked
-    if state.checked_sum > 80:
-        st.error("You have selected more than 80 items to queue, please unselect some items to continue.")
+    #if state.checked_sum > 80:
+    #    st.error("You have selected more than 80 items to queue, please unselect some items to continue.")
     
 # Tracks number of items selected to queue
 if edited_df["In Queue"].sum() > 0:
@@ -172,13 +192,6 @@ metrics_right.metric(label="Average estimated revenue %", value=f"{'{:.2f}'.form
 
 metrics_left.metric(label="Average selected revenue %", value=f"{'{:.2f}'.format(round(state.revenue_percent_value, 2))}%")
 
-# Nice to have's / next steps
-# TODO Add more outputs based on Camofire requests
-# TODO Button for next day generation
-# TODO Merge metric calculations into a function
-# TODO DF: There should be: id, price, sale price, days since queued, purchase limit, suggested quantity
-    #  Camofire asked to include description and instead of item ID have item name; Also include different colors/sizes
-
 # Unused features still in code
 # Button to calculate new metrics
-#calculate = buttons_middle.button("Calculate Metrics") # Backup button in case we don't want dynamic output of current csv (currently loads quickly)    
+#calculate = buttons_middle.button("Calculate Metrics", on_click=calculate_metrics) # Backup button in case we don't want dynamic output of current csv (currently loads quickly)    
