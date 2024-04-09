@@ -178,15 +178,15 @@ with header_download:
 ###################
 metrics_left, metrics_middle, metrics_right = st.columns(3)
 with metrics_left:
-    st.metric(label="Total Cost", value=f"${'{:.2f}'.format(round(state.total_value, 2))}")
-    st.metric(label="Total Estimated Revenue", value=f"${'{:.2f}'.format(round(state.revenue_value, 2))}") 
+    st.metric(label="Total Cost", value=f"${'{:,.2f}'.format(round(state.total_value, 2))}")
+    st.metric(label="Total Estimated Revenue", value=f"${'{:,.2f}'.format(round(state.revenue_value, 2))}") 
 with metrics_middle:
-    st.metric(label="Total Retail Value", value=f"${'{:.2f}'.format(round(state.sales_value, 2))}")
-    st.metric(label="Total Estimated Profit", value=f"${'{:.2f}'.format(round(state.profit_value, 2))}")
+    st.metric(label="Total Retail Value", value=f"${'{:,.2f}'.format(round(state.sales_value, 2))}")
+    st.metric(label="Total Estimated Profit", value=f"${'{:,.2f}'.format(round(state.profit_value, 2))}")
 with metrics_right:
     st.metric(label="empty", value="", label_visibility="hidden") # Empty metrics to center the metrics
     st.metric(label="empty", value="", label_visibility="hidden")
-    st.metric(label="Average Profit Margin %", value=f"{'{:.2f}'.format(round(state.margin_value, 2))}%")
+    st.metric(label="Average Profit Margin %", value=f"{'{:,.2f}'.format(round(state.margin_value, 2))}%")
 
 # Button to calculate new metrics
 #calculate = buttons_middle.button("Calculate Metrics", on_click=calculate_metrics) # Backup button in case we don't want dynamic output of current csv (currently loads quickly)    
