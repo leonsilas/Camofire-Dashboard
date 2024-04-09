@@ -51,48 +51,29 @@ config = {
         step=0.01,
         required=True,),
 }
-# TODO General formatting changes to application for aesthetic
-
-###                  ###
-### MAIN APPLICATION ###
-###                  ###
-
-"""
-# Camofire Queue Selection
-"""
 
 # Session Variables
 state = st.session_state
-
 if 'key' not in state:
-    state.key = 0
-    
+    state.key = 0   
 if 'date' not in state:
-    state.date = datetime.date.today()
-    
+    state.date = datetime.date.today()  
 if 'purchase_limit' not in state:
     state.purchase_limit = 2
-
 if "stateful_df" not in state:
     state.stateful_df = start_df
-
 if "checked_sum" not in state:
-    state.checked_sum = 0
-    
+    state.checked_sum = 0   
 if "total_value" not in state:
-    state.total_value = 0
-    
+    state.total_value = 0 
 if 'sales_value' not in state:
-    state.sales_value = 0 #Replace with algorithm output
-
+    state.sales_value = 0
 if 'revenue_value' not in state:
-    state.revenue_value = 0 #Replace with algorithm output
-    
-if 'revenue_percent_value' not in state:
-    state.revenue_percent_value = 0 #Replace with algorithm output
-
-if 'revenue_estimate_value' not in state:
-    state.revenue_estimate_value = 0 #Replace with algorithm output
+    state.revenue_value = 0 
+if 'profit_value' not in state:
+    state.profit_value = 0
+if 'margin_value' not in state:
+    state.margin_value = 0
     
 # Functions      
 def reset():
@@ -117,34 +98,41 @@ def calculate_metrics():
     # In Queue sum
     state.checked_sum = edited_df["In Queue"].sum()
     
-    # TODO Update with necessary outputs
     # Total selected value calcuation
     state.total_value = 0
     state.sales_value = 0
     state.revenue_value = 0
-    state.revenue_estimate_value = 0
-    state.revenue_percent_value = 0
+    state.profit_value = 0
+    state.margin_value = 0
     for i in range(0, len(edited_df)):
         if edited_df["In Queue"][i] == True:
-            state.total_value += df["cost"][i]    
-            state.sales_value += df["sold_price"][i]
-            state.revenue_value += (df["sold_price"][i] - df["cost"][i])
-            state.revenue_estimate_value += ((df["sold_price"][i] - df["cost"][i]) / df["cost"][i]) * 100
-            state.revenue_estimate_value = state.revenue_estimate_value / state.checked_sum
+            # cogs
+            state.total_value += df["cost"][i] * df["quantity_to_queue"][i]   
+            # sales value
+            state.sales_value += df["retail_price"][i] * df["quantity_to_queue"][i]
+            # gross revenue
+            state.revenue_value += df["sold_price"][i] * df["quantity_to_queue"][i]
+            # profit
+            state.profit_value += (df["sold_price"][i] * df["quantity_to_queue"][i]) - (df["cost"][i] * df["quantity_to_queue"][i]) / state.checked_sum
+            # profit margin
+            state.margin_value += ((df["sold_price"][i] * df["quantity_to_queue"][i] - df["cost"][i] * df["quantity_to_queue"][i]) / (df["sold_price"][i] * df["quantity_to_queue"][i]) * 100 ) / state.checked_sum
 
 def select_first_eighty():   
     edited_df["In Queue"] = False
     edited_df.loc[0:79, "In Queue"] = True
     state.stateful_df = edited_df
 
+def align_buttons():
+    st.write("")
+    st.write("")
+
+# Setup Header
+st.image("assets/camofire_logo_text.png", width=600)
+header_date, header_next_day, header_filler, header_reset, header_select_eighty, header_download = st.columns([.5,.25, 1.5,.25,.25,.41])    
+
 ###################
 # Database Editor
 ###################
-header_left, header_right, header_button = st.columns([1,1,0.25])
-date = header_left.date_input("Date for Queue:", value=state.date, format="MM/DD/YYYY") # Date selection
-header_right.number_input("Purchase Limit:", value=state.purchase_limit, min_value=0) # Purchase limit
-header_button.button("Next Day", on_click=change_day) # Refreshes page with model output for next date
-   
 edited_df = st.data_editor(state.stateful_df, column_config= config, use_container_width=True, key=f'editor_{state.key}')
 
 # Update session variables from changes to df      
@@ -159,39 +147,46 @@ if state.stateful_df is not None:
 if edited_df["In Queue"].sum() > 0:
     st.write("Items selected to queue: {}".format(state.checked_sum))
 
+
 ###################
-# Buttons
+# Header & Buttons
 ###################
-buttons_left, buttons_middle_left, buttons_middle_right, buttons_right = st.columns([1,1,1,1])
-
-# Button to reset data to original
-reset = buttons_left.button("Reset Data", on_click=reset) 
-
-# Button to select first 80 items
-first_eighty = buttons_middle_left.button("Select first 80", on_click=select_first_eighty)
-
-# Button to download selections to csv
-buttons_right.download_button(
-    label="Download Selected to CSV",
-    data=create_queue_df().to_csv().encode("utf-8"),
-    file_name="edited_df.csv",
-    mime="text/csv",
-)
+with header_date:
+    st.date_input("Date for Queue:", value=state.date, format="MM/DD/YYYY") # Date selection
+with header_next_day:
+    align_buttons()
+    st.button("Next Day", on_click=change_day, use_container_width=True) # Refreshes page with model output for next date
+with header_reset:
+    align_buttons()
+    st.button("Reset Data", on_click=reset, use_container_width=True) # Button to reset data to original    
+with header_select_eighty:
+    align_buttons()
+    st.button("Select first 80", on_click=select_first_eighty, use_container_width=True) # Button to select first 80 items 
+with header_download:
+    align_buttons()
+    save_date = state.date.strftime("%m_%d") 
+    st.download_button(
+        label="Download Selected to CSV",
+        data=create_queue_df().to_csv().encode("utf-8"), # Button to download selections to csv
+        file_name= f"queuefor_{save_date}.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
 
 ###################
 # Metrics
 ###################
-st.metric(label="Total selected value", value=f"${'{:.2f}'.format(round(state.total_value, 2))}")
+metrics_left, metrics_middle, metrics_right = st.columns(3)
+with metrics_left:
+    st.metric(label="Total Cost", value=f"${'{:.2f}'.format(round(state.total_value, 2))}")
+    st.metric(label="Total Estimated Revenue", value=f"${'{:.2f}'.format(round(state.revenue_value, 2))}") 
+with metrics_middle:
+    st.metric(label="Total Retail Value", value=f"${'{:.2f}'.format(round(state.sales_value, 2))}")
+    st.metric(label="Total Estimated Profit", value=f"${'{:.2f}'.format(round(state.profit_value, 2))}")
+with metrics_right:
+    st.metric(label="empty", value="", label_visibility="hidden") # Empty metrics to center the metrics
+    st.metric(label="empty", value="", label_visibility="hidden")
+    st.metric(label="Average Profit Margin %", value=f"{'{:.2f}'.format(round(state.margin_value, 2))}%")
 
-metrics_left, metrics_right = st.columns([1,1])
-metrics_left.metric(label="Total estimated sales value", value=f"${'{:.2f}'.format(round(state.sales_value, 2))}")
-
-metrics_right.metric(label="Total estimated revenue", value=f"${'{:.2f}'.format(round(state.revenue_value, 2))}")
-
-metrics_right.metric(label="Average estimated revenue %", value=f"{'{:.2f}'.format(round(state.revenue_estimate_value, 2))}%")
-
-metrics_left.metric(label="Average selected revenue %", value=f"{'{:.2f}'.format(round(state.revenue_percent_value, 2))}%")
-
-# Unused features still in code
 # Button to calculate new metrics
 #calculate = buttons_middle.button("Calculate Metrics", on_click=calculate_metrics) # Backup button in case we don't want dynamic output of current csv (currently loads quickly)    
