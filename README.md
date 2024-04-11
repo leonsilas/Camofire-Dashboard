@@ -1,8 +1,8 @@
 <p align="center">
-<img src="assets/camofire_logo_text.png" width="400"/>
+<img src="assets/camofire_logo_text.png" width="800"/>
 </p>
-***
-<h3 align="center">An interactive interface for machine learning integration</h3>
+<h3 align="center">An interactive interface for machine learning queue selection integrations</h3>
+<h1></h1>
 
 ### Technologies Used
 <p align="left">
@@ -64,4 +64,4 @@ A button is included in commented out code to allow for metric calculation to be
 Error code is also commented out.  Rather than for future use, it can be a quality feature should a set queue number ever be set to ensure too many itmes are not queued.
 
 ## Credits
-This dashboard was created as a collaboration of the E-Commerce Camofire team at the University of Central Florida for the MS Data Analytics program.
+This interface was created as a collaboration of the E-Commerce Camofire team at the University of Central Florida for the MS Data Analytics program.
