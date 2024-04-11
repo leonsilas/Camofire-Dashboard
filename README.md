@@ -56,6 +56,16 @@ Finally, dynamic metrics are printed out.  You may see empty metrics and the "al
 
 Included in the customization there is a config.toml file which is used to change the theme and an assets folder with the necessary logos.
 
+## So What Can it Do?
+The dashboard primarily serves as a hub for the machine learning predictions.  It outputs several columns of data that can be sorted and 
+
+Multiple buttons are there to allow the table to be reset to the original predict state, the first 80 recommended items to be automatically selected, and an export for items selected only.  If you hover over the corner of the table you can download the whole table regardless of selection.  
+
+A date selection is present, but is currently a place holder for future integartion with multiple day prediction.  A slider is also added to adjust model prediction priorty for queue rankings. (e.g., If you prioritize margin, you can have the items in order by highest margin)
+
+The metrics at the bottom of the page are dyanmic, meaning that they will change as you select items in the table.  It will tell you how many items are selected as well as important numbers such as cost, revenue, margin, etc.
+
+
 ## Improvements / Unused Code
 As mentioned previously Streamlit does allow greater direct integration with the database directly.  This is something that could be explored in the future to streamline the queuing process and reduce bloat and computation complexity through advanced dynamic queuing within a database.
 
