@@ -13,6 +13,8 @@ df.drop(columns=["queue_date"], inplace=True)
 df.insert(0, "In Queue", False)
 
 start_df = df.copy()
+ranked_df = df.copy() #Placeholders for input csv
+other_ranked_df = df.copy()
    
 # Utilities
 st.set_page_config(page_title="Camofire Automated Queue Selection", page_icon="🔥", layout="wide")
@@ -112,10 +114,13 @@ def calculate_metrics():
             state.sales_value += df["retail_price"][i] * df["quantity_to_queue"][i]
             # gross revenue
             state.revenue_value += df["sold_price"][i] * df["quantity_to_queue"][i]
-            # profit
-            state.profit_value += (df["sold_price"][i] * df["quantity_to_queue"][i]) - (df["cost"][i] * df["quantity_to_queue"][i]) / state.checked_sum
-            # profit margin
-            state.margin_value += ((df["sold_price"][i] * df["quantity_to_queue"][i] - df["cost"][i] * df["quantity_to_queue"][i]) / (df["sold_price"][i] * df["quantity_to_queue"][i]) * 100 ) / state.checked_sum
+    # profit
+    state.profit_value = state.revenue_value - state.total_value
+    # profit margin
+    if state.revenue_value == 0:
+        state.margin_value = 0
+    else:
+        state.margin_value = (state.profit_value / state.revenue_value) * 100
 
 def select_first_eighty():   
     edited_df["In Queue"] = False
@@ -128,7 +133,7 @@ def align_buttons():
 
 # Setup Header
 st.image("assets/camofire_logo_text.png", width=600)
-header_date, header_next_day, header_filler, header_reset, header_select_eighty, header_download = st.columns([.5,.25, 1.5,.25,.25,.41])    
+header_date, header_next_day, header_slider, header_reset, header_select_eighty, header_download = st.columns([.5,.25, 1.5,.25,.25,.41])    
 
 ###################
 # Database Editor
@@ -138,7 +143,7 @@ edited_df = st.data_editor(state.stateful_df, column_config= config, use_contain
 # Update session variables from changes to df      
 if state.stateful_df is not None:    
     calculate_metrics()
-    
+    # BUG If you change the dataframe manually, the metrics will not update
     # Alert if too many are checked
     #if state.checked_sum > 80:
     #    st.error("You have selected more than 80 items to queue, please unselect some items to continue.")
@@ -146,7 +151,6 @@ if state.stateful_df is not None:
 # Tracks number of items selected to queue
 if edited_df["In Queue"].sum() > 0:
     st.write("Items selected to queue: {}".format(state.checked_sum))
-
 
 ###################
 # Header & Buttons
@@ -156,6 +160,11 @@ with header_date:
 with header_next_day:
     align_buttons()
     st.button("Next Day", on_click=change_day, use_container_width=True) # Refreshes page with model output for next date
+
+with header_slider:
+    align_buttons()
+    
+    
 with header_reset:
     align_buttons()
     st.button("Reset Data", on_click=reset, use_container_width=True) # Button to reset data to original    
