@@ -2,29 +2,33 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-# TODO INT: Adjust csv columns to Camofire's requests
-    #  Description, Qty in Inventory, Qty to Queue, Cost, Retail, Selling, Total Cost, Total Revenue, Total Profit Margin, Days Since Last Queued
 # TODO INT: Add slider to change do different subset of the csv based off ranking system (ie. Margin vs Revenue vs etc.)
 
 # Setting up df
 input = pd.read_csv("items_to_queue.csv")
 df = pd.DataFrame(input)
 #df.drop(columns=["Unnamed: 0"], inplace=True) # Uncomment if there is an extra column
-df.drop(columns=["queue_date"], inplace=True)
+df.drop(columns=["days_since_queued"], inplace=True) # Comment out if using days_since_queued
+df.drop(columns=["queue_date", "item_id", "sku", "predicted_quantity_sold"], inplace=True)
 df.insert(0, "In Queue", False)
 
+# Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low priority, so it's commented out.  
+# df["Total Cost"] = df["cost"] * df["quantity_to_queue"]
+# df["Estimated Revenue"] = df["sold_price"] * df["quantity_to_queue"]
+# if df["Estimated Revenue"].sum() == 0:
+#     df["Estimated Margin"] = 0
+# else:
+#     df["Estimated Margin"] = (df["Estimated Revenue"] - df["Total Cost"]) / df["Estimated Revenue"] * 100
+
 start_df = df.copy()
-ranked_df = df.copy() #Placeholders for input csv
-other_ranked_df = df.copy()
-   
+
 # Utilities
 st.set_page_config(page_title="Camofire Automated Queue Selection", page_icon="🔥", layout="wide")
 config = {
-    "item_id": st.column_config.NumberColumn(
-        "Item ID",
-        format="%.0f",
-        step=1,
-        disabled=True,),
+    "description": st.column_config.TextColumn(
+        "Item Description",
+        required=True,
+        disabled=True),
     "cost": st.column_config.NumberColumn(
         "Cost (in USD)",
         format="$%.2f",
@@ -40,10 +44,6 @@ config = {
         format="%.0f",
         step=1,
         required=True,),
-    # "days_since_queued": st.column_config.NumberColumn(
-    #     "Days Since Last Queued",
-    #     format="%.0f",
-    #     step=1,),
     "quantity_to_queue": st.column_config.NumberColumn(
         "Suggested Qty To Queue",
         format="%.0f",
@@ -53,6 +53,24 @@ config = {
         format="$%.2f",
         step=0.01,
         required=True,),
+    # "days_since_queued": st.column_config.NumberColumn(
+    #     "Days Since Last Queued",
+    #     format="%.0f",
+    #     step=1,),
+    # "Total Cost": st.column_config.NumberColumn(
+    #     "Total Cost (in USD)",
+    #     format="$%.2f",
+    #     step=0.01,
+    #     disabled=True,),
+    # "Estimated Revenue": st.column_config.NumberColumn(
+    #     "Estimated Revenue (in USD)",
+    #     format="$%.2f",
+    #     step=0.01,
+    #     disabled=True,),
+    # "Estimated Margin": st.column_config.NumberColumn(
+    #     format="%.2f%",
+    #     step=0.01,
+    #     disabled=True,),     
 }
 
 # Session Variables
@@ -78,14 +96,14 @@ if 'profit_value' not in state:
 if 'margin_value' not in state:
     state.margin_value = 0
     
-# Functions      
+# Functions     
 def reset():
     state.stateful_df = start_df
     state.key += 1
     
 def change_day():
     state.date += datetime.timedelta(days=1)
-    # TODO Future: Have df update to new predicted queue with date selection
+    # FIXME: Have df update to new predicted queue with date selection
     state.key += 1
     
 def create_queue_df():
@@ -110,11 +128,11 @@ def calculate_metrics():
     for i in range(0, len(edited_df)):
         if edited_df["In Queue"][i] == True:
             # cogs
-            state.total_value += df["cost"][i] * df["quantity_to_queue"][i]   
+            state.total_value += edited_df["cost"][i] * edited_df["quantity_to_queue"][i]   
             # sales value
-            state.sales_value += df["retail_price"][i] * df["quantity_to_queue"][i]
+            state.sales_value += edited_df["retail_price"][i] * edited_df["quantity_to_queue"][i]
             # gross revenue
-            state.revenue_value += df["sold_price"][i] * df["quantity_to_queue"][i]
+            state.revenue_value += edited_df["sold_price"][i] * edited_df["quantity_to_queue"][i]
     # profit
     state.profit_value = state.revenue_value - state.total_value
     # profit margin
@@ -122,6 +140,15 @@ def calculate_metrics():
         state.margin_value = 0
     else:
         state.margin_value = (state.profit_value / state.revenue_value) * 100
+    
+    # Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low priority, so it's commented out.    
+    # edited_df["Total Cost"] = edited_df["cost"] * edited_df["quantity_to_queue"]
+    # edited_df["Estimated Revenue"] = edited_df["sold_price"] * edited_df["quantity_to_queue"]
+    # if edited_df["Estimated Revenue"].sum() == 0:
+    #     edited_df["Estimated Margin"] = 0
+    # else:
+    #     edited_df["Estimated Margin"] = (edited_df["Estimated Revenue"] - edited_df["Total Cost"]) / edited_df["Estimated Revenue"] * 100
+    # state.stateful_df = edited_df
 
 def select_first_eighty():   
     edited_df["In Queue"] = False
@@ -139,12 +166,12 @@ header_date, header_next_day, header_slider, header_reset, header_select_eighty,
 ###################
 # Database Editor
 ###################
-edited_df = st.data_editor(state.stateful_df, column_config= config, use_container_width=True, key=f'editor_{state.key}')
+edited_df = st.data_editor(state.stateful_df, column_config= config, use_container_width=True, key=f'editor_{state.key}', hide_index=True)
 
 # Update session variables from changes to df      
 if state.stateful_df is not None:    
     calculate_metrics()
-    # BUG If you change the dataframe manually, the metrics will not update
+
     # Alert if too many are checked
     #if state.checked_sum > 80:
     #    st.error("You have selected more than 80 items to queue, please unselect some items to continue.")
@@ -164,8 +191,7 @@ with header_next_day:
 
 with header_slider:
     align_buttons()
-    
-    
+       
 with header_reset:
     align_buttons()
     st.button("Reset Data", on_click=reset, use_container_width=True) # Button to reset data to original    
