@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-# TODO INT: There should be: id, sold_price, sale sold_price, days since queued, purchase limit, suggested quantity
-    #  Camofire asked to include description and instead of item ID have item name; Also include different colors/sizes
+# TODO INT: Adjust csv columns to Camofire's requests
+    #  Description, Qty in Inventory, Qty to Queue, Cost, Retail, Selling, Total Cost, Total Revenue, Total Profit Margin, Days Since Last Queued
+# TODO INT: Add slider to change do different subset of the csv based off ranking system (ie. Margin vs Revenue vs etc.)
 
 # Setting up df
 input = pd.read_csv("items_to_queue.csv")
@@ -30,7 +31,7 @@ config = {
         step=0.01,
         required=True,),
     "sold_price": st.column_config.NumberColumn(
-        "Selling Price (in USD)",
+        "Suggested Selling Price (in USD)",
         format="$%.2f",
         step=0.01,
         required=True,),
@@ -44,11 +45,11 @@ config = {
     #     format="%.0f",
     #     step=1,),
     "quantity_to_queue": st.column_config.NumberColumn(
-        "Qty To Queue",
+        "Suggested Qty To Queue",
         format="%.0f",
         step=1,),
     "retail_price": st.column_config.NumberColumn(
-        "Retail Price",
+        "Retail Price (in USD)",
         format="$%.2f",
         step=0.01,
         required=True,),
@@ -84,7 +85,7 @@ def reset():
     
 def change_day():
     state.date += datetime.timedelta(days=1)
-    # TODO INT: Have df update with date selection
+    # TODO Future: Have df update to new predicted queue with date selection
     state.key += 1
     
 def create_queue_df():

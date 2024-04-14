@@ -57,7 +57,7 @@ Finally, dynamic metrics are printed out.  You may see empty metrics and the "al
 Included in the customization there is a config.toml file which is used to change the theme and an assets folder with the necessary logos.
 
 ## So What Can it Do?
-The dashboard primarily serves as a hub for the machine learning predictions.  It outputs several columns of data that can be sorted and 
+The dashboard primarily serves as a hub for the machine learning predictions.  It outputs several columns of data that can be sorted and adjusted.
 
 Multiple buttons are there to allow the table to be reset to the original predict state, the first 80 recommended items to be automatically selected, and an export for items selected only.  If you hover over the corner of the table you can download the whole table regardless of selection.  
 
