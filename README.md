@@ -74,4 +74,4 @@ A button is included in commented out code to allow for metric calculation to be
 Error code is also commented out.  Rather than for future use, it can be a quality feature should a set queue number ever be set to ensure too many itmes are not queued.
 
 ## Credits
-This interface was created as a collaboration of the E-Commerce Camofire team at the University of Central Florida for the MS Data Analytics program.
+This interface was created as a collaboration of the E-Commerce Camofire team at the University of Central Florida for the Master of Science in Data Analytics program.
