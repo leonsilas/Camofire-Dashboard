@@ -172,9 +172,11 @@ edited_df = st.data_editor(state.stateful_df, column_config= config, use_contain
 if state.stateful_df is not None:    
     calculate_metrics()
 
-    # Alert if too many are checked
+    # Alerts
     #if state.checked_sum > 80:
     #    st.error("You have selected more than 80 items to queue, please unselect some items to continue.")
+    #if edited_df["quantity_to_queue"].sum() > edited_df["quantity_in_inventory"].sum():
+    #    st.error("You have selected more items to queue than in stock.  Please adjust suggested quantity to continue.")
     
 # Tracks number of items selected to queue
 if edited_df["In Queue"].sum() > 0:
