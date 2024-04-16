@@ -2,17 +2,15 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-# TODO INT: Add slider to change do different subset of the csv based off ranking system (ie. Margin vs Revenue vs etc.)
-
 # Setting up df
 input = pd.read_csv("items_to_queue.csv")
 df = pd.DataFrame(input)
 #df.drop(columns=["Unnamed: 0"], inplace=True) # Uncomment if there is an extra column
-df.drop(columns=["days_since_queued"], inplace=True) # Comment out if using days_since_queued
-df.drop(columns=["queue_date", "item_id", "sku", "predicted_quantity_sold"], inplace=True)
+#df.drop(columns=["days_since_queued"], inplace=True) # Comment out if using days_since_queued
+df.drop(columns=["queue_date", "predicted_quantity_sold", "margin_per_unit", "queue_percentage", "predicted_revenue", "predicted_margin"], inplace=True)
 df.insert(0, "In Queue", False)
 
-# Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low priority, so it's commented out.  
+# Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low view_selection, so it's commented out.  
 # df["Total Cost"] = df["cost"] * df["quantity_to_queue"]
 # df["Estimated Revenue"] = df["sold_price"] * df["quantity_to_queue"]
 # if df["Estimated Revenue"].sum() == 0:
@@ -20,11 +18,30 @@ df.insert(0, "In Queue", False)
 # else:
 #     df["Estimated Margin"] = (df["Estimated Revenue"] - df["Total Cost"]) / df["Estimated Revenue"] * 100
 
+# Sorts for each ranking system
 start_df = df.copy()
+margin_df = df.copy()
+margin_df.sort_values(by=["predicted_margin_rank"], inplace=True, ascending=False)
+
+revenue_df = df.copy()
+revenue_df.sort_values(by=["predicted_revenue_rank"], inplace=True, ascending=False)
+
+turnover_df = df.copy()
+turnover_df.sort_values(by=["predicted_turnover_rank"], inplace=True, ascending=False)
 
 # Utilities
 st.set_page_config(page_title="Camofire Automated Queue Selection", page_icon="🔥", layout="wide")
 config = {
+    "item_id": st.column_config.NumberColumn(
+        "Item ID",
+        format="%.0f",
+        step=1,
+        required=True,
+        disabled=True),
+    "sku": st.column_config.TextColumn(
+        "SKU",
+        required=True,
+        disabled=True),
     "description": st.column_config.TextColumn(
         "Item Description",
         required=True,
@@ -53,6 +70,9 @@ config = {
         format="$%.2f",
         step=0.01,
         required=True,),
+    "predicted_margin_rank": None,
+    "predicted_revenue_rank": None,
+    "predicted_turnover_rank": None,
     # "days_since_queued": st.column_config.NumberColumn(
     #     "Days Since Last Queued",
     #     format="%.0f",
@@ -85,6 +105,8 @@ if "stateful_df" not in state:
     state.stateful_df = start_df
 if "checked_sum" not in state:
     state.checked_sum = 0   
+if "checked_unique" not in state:
+    state.checked_unique = 0
 if "total_value" not in state:
     state.total_value = 0 
 if 'sales_value' not in state:
@@ -118,6 +140,7 @@ def create_queue_df():
 def calculate_metrics():
     # In Queue sum
     state.checked_sum = edited_df["In Queue"].sum()
+    unique = []
     
     # Total selected value calcuation
     state.total_value = 0
@@ -133,6 +156,9 @@ def calculate_metrics():
             state.sales_value += edited_df["retail_price"][i] * edited_df["quantity_to_queue"][i]
             # gross revenue
             state.revenue_value += edited_df["sold_price"][i] * edited_df["quantity_to_queue"][i]
+            # unique item ids
+            if edited_df["item_id"][i] not in unique:
+                unique.append(edited_df["item_id"][i])
     # profit
     state.profit_value = state.revenue_value - state.total_value
     # profit margin
@@ -140,8 +166,10 @@ def calculate_metrics():
         state.margin_value = 0
     else:
         state.margin_value = (state.profit_value / state.revenue_value) * 100
+    # unique count
+    state.checked_unique = unique.__len__()
     
-    # Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low priority, so it's commented out.    
+    # Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low view_selection, so it's commented out.    
     # edited_df["Total Cost"] = edited_df["cost"] * edited_df["quantity_to_queue"]
     # edited_df["Estimated Revenue"] = edited_df["sold_price"] * edited_df["quantity_to_queue"]
     # if edited_df["Estimated Revenue"].sum() == 0:
@@ -161,7 +189,7 @@ def align_buttons():
 
 # Setup Header
 st.image("assets/camofire_logo_text.png", width=600)
-header_date, header_next_day, header_slider, header_reset, header_select_eighty, header_download = st.columns([.5,.25, 1.5,.25,.25,.41])    
+header_date, header_next_day, header_radio, header_reset, header_select_eighty, header_download = st.columns([.5,.25, 1.5,.25,.25,.41])    
 
 ###################
 # Database Editor
@@ -181,25 +209,42 @@ if state.stateful_df is not None:
 # Tracks number of items selected to queue
 if edited_df["In Queue"].sum() > 0:
     st.write("Items selected to queue: {}".format(state.checked_sum))
+    st.write("Unique items selected to queue: {}".format(state.checked_unique))
 
 ###################
 # Header & Buttons
 ###################
 with header_date:
-    st.date_input("Date for Queue:", value=state.date, format="MM/DD/YYYY") # Date selection
+    st.date_input("Date for Queue:", 
+        value=state.date, 
+        format="MM/DD/YYYY"
+    ) # Date selection
 with header_next_day:
     align_buttons()
-    st.button("Next Day", on_click=change_day, use_container_width=True) # Refreshes page with model output for next date
-
-with header_slider:
-    align_buttons()
-       
+    st.button("Next Day", 
+        on_click=change_day, 
+        use_container_width=True
+    ) # Refreshes page with model output for next date
+with header_radio:
+    st.write("")
+    view_selection = st.radio(
+    "What would you like to prioritize?",
+    ["Margin", "Revenue", "Turnover"],
+    horizontal=True,
+    format_func=lambda x: "Select" if x == "Select" else x
+    ) # Radio button to select ranking system
 with header_reset:
     align_buttons()
-    st.button("Reset Data", on_click=reset, use_container_width=True) # Button to reset data to original    
+    st.button("Reset Data", 
+        on_click=reset, 
+        use_container_width=True
+    ) # Button to reset data to original    
 with header_select_eighty:
     align_buttons()
-    st.button("Select first 80", on_click=select_first_eighty, use_container_width=True) # Button to select first 80 items 
+    st.button("Select first 80", 
+        on_click=select_first_eighty, 
+        use_container_width=True
+    ) # Button to select first 80 items 
 with header_download:
     align_buttons()
     save_date = state.date.strftime("%m_%d") 
@@ -210,7 +255,7 @@ with header_download:
         mime="text/csv",
         use_container_width=True
     )
-
+    
 ###################
 # Metrics
 ###################
