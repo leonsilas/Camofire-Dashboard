@@ -9,25 +9,16 @@ df = pd.DataFrame(input)
 #df.drop(columns=["days_since_queued"], inplace=True) # Comment out if using days_since_queued
 df.drop(columns=["queue_date", "predicted_quantity_sold", "margin_per_unit", "queue_percentage", "predicted_revenue", "predicted_margin"], inplace=True)
 df.insert(0, "In Queue", False)
+df.sort_values(by=["predicted_margin_rank"], inplace=True, ascending=False)
+start_df = df.copy()
 
-# Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low view_selection, so it's commented out.  
+# Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low view, so it's commented out.  
 # df["Total Cost"] = df["cost"] * df["quantity_to_queue"]
 # df["Estimated Revenue"] = df["sold_price"] * df["quantity_to_queue"]
 # if df["Estimated Revenue"].sum() == 0:
 #     df["Estimated Margin"] = 0
 # else:
 #     df["Estimated Margin"] = (df["Estimated Revenue"] - df["Total Cost"]) / df["Estimated Revenue"] * 100
-
-# Sorts for each ranking system
-start_df = df.copy()
-margin_df = df.copy()
-margin_df.sort_values(by=["predicted_margin_rank"], inplace=True, ascending=False)
-
-revenue_df = df.copy()
-revenue_df.sort_values(by=["predicted_revenue_rank"], inplace=True, ascending=False)
-
-turnover_df = df.copy()
-turnover_df.sort_values(by=["predicted_turnover_rank"], inplace=True, ascending=False)
 
 # Utilities
 st.set_page_config(page_title="Camofire Automated Queue Selection", page_icon="🔥", layout="wide")
@@ -130,6 +121,7 @@ def change_day():
     
 def create_queue_df():
     queue_df = edited_df.copy()
+    queue_df.drop(columns=["predicted_margin_rank", "predicted_revenue_rank", "predicted_turnover_rank"], inplace=True)
     for i in range(0, len(edited_df)):
         if edited_df["In Queue"][i] == False:
             queue_df.drop(i, inplace=True)
@@ -169,7 +161,7 @@ def calculate_metrics():
     # unique count
     state.checked_unique = unique.__len__()
     
-    # Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low view_selection, so it's commented out.    
+    # Allows dynamic columns to be updated, but is slow. Streamlit is also removing ability to do so and replacement is low view, so it's commented out.    
     # edited_df["Total Cost"] = edited_df["cost"] * edited_df["quantity_to_queue"]
     # edited_df["Estimated Revenue"] = edited_df["sold_price"] * edited_df["quantity_to_queue"]
     # if edited_df["Estimated Revenue"].sum() == 0:
@@ -180,7 +172,7 @@ def calculate_metrics():
 
 def select_first_eighty():   
     edited_df["In Queue"] = False
-    edited_df.loc[0:79, "In Queue"] = True
+    edited_df.loc[edited_df.index[:80], "In Queue"] = True
     state.stateful_df = edited_df
 
 def align_buttons():
@@ -227,12 +219,12 @@ with header_next_day:
     ) # Refreshes page with model output for next date
 with header_radio:
     st.write("")
-    view_selection = st.radio(
+    view = st.radio(
     "What would you like to prioritize?",
     ["Margin", "Revenue", "Turnover"],
     horizontal=True,
-    format_func=lambda x: "Select" if x == "Select" else x
-    ) # Radio button to select ranking system
+    format_func=lambda x: "Select" if x == "Select" else x,
+    )
 with header_reset:
     align_buttons()
     st.button("Reset Data", 
@@ -255,7 +247,21 @@ with header_download:
         mime="text/csv",
         use_container_width=True
     )
-    
+
+# Refresh page with new view based on radio selection
+if view == "Margin":
+    st.write("Margin")
+    state.stateful_df = edited_df.sort_values(by=["predicted_margin_rank"], ascending=False)
+    state.key += 1
+elif view == "Revenue":
+    st.write("Revenue")
+    state.stateful_df = edited_df.sort_values(by=["predicted_revenue_rank"], ascending=False)
+    state.key += 1
+elif view == "Turnover":
+    st.write("Turnover")
+    state.stateful_df = edited_df.sort_values(by=["predicted_turnover_rank"], ascending=False)
+    state.key += 1
+ 
 ###################
 # Metrics
 ###################

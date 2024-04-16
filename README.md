@@ -61,7 +61,7 @@ The dashboard primarily serves as a hub for the machine learning predictions.  I
 
 Multiple buttons are there to allow the table to be reset to the original predict state, the first 80 recommended items to be automatically selected, and an export for items selected only.  If you hover over the corner of the table you can download the whole table regardless of selection.  
 
-A date selection is present, but is currently a place holder for future integartion with multiple day prediction.  A slider is also added to adjust model prediction priorty for queue rankings. (e.g., If you prioritize margin, you can have the items in order by highest margin)
+A date selection is present, but is currently a place holder for future integartion with multiple day prediction.  A set of radio buttons is also added to adjust model prediction priorty for queue rankings. (e.g., If you prioritize margin, you can have the items in order by highest margin rank)
 
 The metrics at the bottom of the page are dyanmic, meaning that they will change as you select items in the table.  It will tell you how many items are selected as well as important numbers such as cost, revenue, margin, etc.
 
